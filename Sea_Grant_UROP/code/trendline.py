@@ -43,20 +43,26 @@ def read_csv(csv_path: str) -> pd.DataFrame:
     return df
 
 def extract_data(df: pd.DataFrame,plankton_type):
+    """saves the avg, q1, q2 from each region for a specific plankton_type
+    
+    creates list of lists
+    each sublist corresponds to a region
+    each sublist contains a dictionary saving the avg, q1, and q2
+    """
     data=[]
-
     
     all_dates = df['date'].unique()
     n_dates = len(all_dates)
-    date_to_idx = {date: i for i, date in enumerate(sorted(all_dates))}
+    date_to_idx = {date: i for i, date in enumerate(sorted(all_dates))} #maps each date to an index
     
     region=df['region']
     for region_num in range(1,5,1):
         region_dict={}
         
         mask=(region==region_num)
-        region_df = df.loc[mask].copy()        
+        region_df = df.loc[mask].copy() #selects only the data from a specific region      
        
+        #nan represents dates with no data. initializes all the plankton lists
         full_avg  = np.full(n_dates, np.nan)
         full_q1  = np.full(n_dates, np.nan)
         full_q3  = np.full(n_dates, np.nan)
@@ -75,7 +81,7 @@ def extract_data(df: pd.DataFrame,plankton_type):
     return data
 
 def generate_trendline(plankton_type,df,save):
-    """
+    """generates trendline for a specific species of plankton across all 4 regions
     """
     dates = pd.to_datetime(df['date'].unique())
 
@@ -94,11 +100,12 @@ def generate_trendline(plankton_type,df,save):
         nan_indices = np.isnan(avg_values)
         valid_indices = ~nan_indices
         
-        print(q1_values[valid_indices])
+        print(q1_values[valid_indices]) #only plot dots for valid dates
         plt.fill_between(dates[valid_indices], q1_values[valid_indices], q3_values[valid_indices], color='lightblue', alpha=0.75, label='Min-Max Range')
 
         plt.plot(dates[valid_indices], avg_values[valid_indices], label='Trendline', color='blue', marker='o', markersize=5, markerfacecolor='black')
         
+        #plot gray bars for dates with no data
         for d in dates[nan_indices]:
             plt.axvspan(d - pd.Timedelta(days=3), d + pd.Timedelta(days=3),
                         color='gray', alpha=0.3,
@@ -111,7 +118,7 @@ def generate_trendline(plankton_type,df,save):
             plt.tick_params(axis='x', labelbottom=False)
         plt.title("Region " + str(region_num))
             
-    plt.gca().xaxis.set_major_locator(plt.MaxNLocator(20))   
+    plt.gca().xaxis.set_major_locator(plt.MaxNLocator(20)) #plot 20 dates along the x axisv  
     plt.gca().xaxis.set_major_formatter(DateFormatter('%Y-%m'))  
 
     plt.xticks(rotation=45)

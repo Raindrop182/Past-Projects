@@ -43,6 +43,8 @@ def read_csv(csv_path: str) -> pd.DataFrame:
     return df
 
 def extractYears(dates: list):
+    """Converts list of datetime objects to list of datetime years
+    """
     years=[]
     for date in dates:
         if date.year not in years:
@@ -51,12 +53,21 @@ def extractYears(dates: list):
     return years
 
 def createDatesDict(dates,years):
+    """Creates dictionary with keys that are years
+    Each year corresponds to a list of month-day time objects
+    
+    Params:
+        dates: list of datetime objects
+        years: list of datetime years
+    """
     dates_dict={year: [] for year in years}
     for date in dates:
         dates_dict[date.year].append(date.replace(year=2000))
     return dates_dict
 
 def extract_data(df: pd.DataFrame, allData,years):
+    """save data from each region for each plankton type, by year
+    """
     df['date'] = pd.to_datetime(df['date'])
     
     for regionNum in range(1,5,1):
@@ -70,6 +81,8 @@ def extract_data(df: pd.DataFrame, allData,years):
                  allData[regionNum][plankton_type][year].extend(year_df[plankton_type.value+"_avg"].tolist())
 
 def heat_map(region, plankton_type,allData,dates_dict,save):
+    """creates heat_map for a specific plankton type in a specific region over all the dates
+    """
     fig, ax = plt.subplots(figsize=(14, 8))
     years = sorted(dates_dict.keys())
     
@@ -91,6 +104,7 @@ def heat_map(region, plankton_type,allData,dates_dict,save):
                interpolation='nearest',
                origin='lower')  
     
+    #write numerical concentration in center
     for i in range(len(years)):
         for j in range(12):
             if not np.isnan(data_grid[i, j]):
@@ -133,8 +147,8 @@ if __name__ == '__main__':
     else:
         df=read_csv(csv_path)
         
+        #generate x axis (dates)
         dates = [datetime.strptime(d, "%Y-%m-%d") for d in df['date'].unique()]
-                
         years=extractYears(dates)
         dates_dict=createDatesDict(dates,years)
                     
@@ -146,7 +160,6 @@ if __name__ == '__main__':
         
         region=1
         plankton_type=DataType.DIAT
-
         heat_map(region,plankton_type,allData,dates_dict,save=True)
             
         

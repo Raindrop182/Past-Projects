@@ -17,12 +17,12 @@ class DataType(Enum):
     GREEN = "greenalgae_hirata"
     PRYM = "prymnesiophytes_hirata"
 
+#names to put in graph legend
 NAMES={DataType.DIAT:"Diatoms",DataType.DINO:"Dinoflagellates",DataType.GREEN:"Green Algae",DataType.PRYM:"Prymnesiophytes"}
 
 def read_csv(csv_path: str) -> pd.DataFrame:
     """Reads csv file as dataframe object
     """
-    
     #search for the row that contains all the variable names
     with open(csv_path, 'r') as f:
         numLinesBeforeHeader=0  
@@ -41,7 +41,9 @@ def read_csv(csv_path: str) -> pd.DataFrame:
         
     return df
 
-def extractYears(dates: list):
+def extractYears(dates: list)->list:
+    """Converts list of datetime objects to list of datetime years
+    """
     years=[]
     for date in dates:
         if date.year not in years:
@@ -50,12 +52,21 @@ def extractYears(dates: list):
     return years
 
 def createDatesDict(dates,years):
+    """Creates dictionary with keys that are years
+    Each year corresponds to a list of month-day time objects
+    
+    Params:
+        dates: list of datetime objects
+        years: list of datetime years
+    """
     dates_dict={year: [] for year in years}
     for date in dates:
         dates_dict[date.year].append(date.replace(year=2000))
     return dates_dict
 
 def extract_data(df: pd.DataFrame, allData,years):
+    """save data from each region for each plankton type, by year
+    """
     df['date'] = pd.to_datetime(df['date'])
     
     for regionNum in range(1,5,1):
@@ -69,6 +80,8 @@ def extract_data(df: pd.DataFrame, allData,years):
                  allData[regionNum][plankton_type][year].extend(year_df[plankton_type.value+"_avg"].tolist())
                  
 def lineGraph10lines(region,plankton_type,allData,dates_dict,save):
+    """graph all data on one plot, with each line representing one year
+    """
     fig, ax = plt.subplots(figsize=(16, 6)) 
     fig.supylabel("Concentration as Fraction of Chlorophyll-A",x=0.06)
     ax.set_ylim(0,1)
@@ -102,6 +115,8 @@ def lineGraph10lines(region,plankton_type,allData,dates_dict,save):
         fig.savefig(output_path+"plot.png",bbox_inches="tight")
         
 def lineGraph5lines(region,plankton_type,allData,dates_dict,save):
+    """graph the years on two subplots
+    """
     fig= plt.figure(figsize=(16, 6)) 
     fig.supylabel("Concentration as Fraction of Chlorophyll-A",x=0.5)
     fig.suptitle("Region "+f"{region}"+f" {NAMES[plankton_type]}")
@@ -154,21 +169,20 @@ if __name__ == '__main__':
     else:
         df=read_csv(csv_path)
         
+        #prepare x-axis (dates)
         dates = [datetime.strptime(d, "%Y-%m-%d") for d in df['date'].unique()]
-                
         years=extractYears(dates)
         dates_dict=createDatesDict(dates,years)
-                    
+        
         allData={}
         for i in range(1,5):
             allData[i]={DataType.DIAT:{year: [] for year in years},DataType.DINO:{year: [] for year in years},DataType.GREEN:{year: [] for year in years},DataType.PRYM:{year: [] for year in years}}
         
         extract_data(df,allData,years)
         
-        region=1
-        plankton_type=DataType.DIAT
-        
-        lineGraph10lines(region,plankton_type,allData,dates_dict,save=True)
+        #region=1
+        #plankton_type=DataType.DIAT
+        #lineGraph10lines(region,plankton_type,allData,dates_dict,save=True)
         # lineGraph5lines(region,plankton_type,allData,dates_dict,save=True)
             
         

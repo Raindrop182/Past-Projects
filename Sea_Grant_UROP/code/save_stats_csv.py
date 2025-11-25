@@ -55,6 +55,8 @@ def read_csv(csv_path: str) -> pd.DataFrame:
     return df
 
 def avgValue(data: list) -> int:
+    """returns avg value of a list
+    """
     if len(data)==0:
         avg_value=0
     else:
@@ -62,6 +64,8 @@ def avgValue(data: list) -> int:
     return avg_value
 
 def extract_data(df: pd.DataFrame, data: list[dict], date):
+    """
+    """
     for region_num in range(1,5,1):
         mask=(df['region']==region_num)
         region_df=df.loc[mask,[dt.value for dt in DataType]] #selects only the data corresponding to the region

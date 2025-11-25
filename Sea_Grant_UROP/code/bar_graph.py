@@ -21,7 +21,6 @@ COLORS={"other":(207/255, 255/255, 223/255),DataType.DIAT:(126/255, 33/255, 148/
 def read_csv(csv_path: str) -> pd.DataFrame:
     """Reads csv file as dataframe object
     """
-    
     #search for the row that contains all the variable names
     with open(csv_path, 'r') as f:
         numLinesBeforeHeader=0  
@@ -40,7 +39,14 @@ def read_csv(csv_path: str) -> pd.DataFrame:
         
     return df
 
-def extract_data(df: pd.DataFrame):
+def extract_data(df: pd.DataFrame) -> dict:
+    """Converts pandas dataframe to a dictionary
+    
+    Returns: dictionary with keys corresponding to each type of plankton
+    each plankton corresponds to 4 lists
+    each list corresponds to the avg values from a region
+    -1 represents dates where there were no data
+    """
     allData={}
     allData[DataType.DIAT]=[]
     allData[DataType.DINO]=[]
@@ -54,15 +60,18 @@ def extract_data(df: pd.DataFrame):
     region=df['region']
     for region_num in range(1,5,1):
         mask=(region==region_num)
-        region_df = df.loc[mask].copy()        
+        region_df = df.loc[mask].copy() #selects only the data from a specific region    
        
-        full_diat  = np.full(n_dates, -1.0)
+        #-1 represents dates with no data. initializes all the plankton lists
+        full_diat  = np.full(n_dates, -1.0) 
         full_dino  = np.full(n_dates, -1.0)
         full_green = np.full(n_dates, -1.0)
         full_prym  = np.full(n_dates, -1.0)
         
+        #some regions may not have all the dates. maps dates in the regions to their proper index.
         indices = region_df['date'].map(date_to_idx).values
-                    
+        
+        #replaces -1 (null data points) with actual data points
         full_diat[indices]  = region_df[DataType.DIAT.value  + "_avg"].values 
         full_dino[indices]  = region_df[DataType.DINO.value  + "_avg"].values
         full_green[indices] = region_df[DataType.GREEN.value + "_avg"].values
@@ -76,6 +85,9 @@ def extract_data(df: pd.DataFrame):
 
 def generate_bar_graph(data,dates,save):
     """generates bar graph displaying plankton concentration in each region
+    
+    Args:
+        data: dictionary with plankton keys corresponding to 4 lists. each list corresponds to a specific region
     """
     fig=plt.figure(figsize=(50,12))
     fig.subplots_adjust(hspace=0.5)

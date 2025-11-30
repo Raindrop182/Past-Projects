@@ -7,7 +7,7 @@ As a researcher in MIT Sea Grant, I am studying plankton concentrations off the 
 <a href="https://github.com/Raindrop182/Past-Projects/blob/main/Sea_Grant_UROP/code/bar_graph.py">Bar Graph Code</a>
 <img src="Sea_Grant_UROP/images/sampleheatmap.png" width="500" alt="heat map">
 <a href="https://github.com/Raindrop182/Past-Projects/blob/main/Sea_Grant_UROP/code/heatmap.py">Heat Map Code</a>
-<img src="Sea_Grant_UROP/images/samplelinegraph-5.png" width="500" alt="heat map"><img src="Sea_Grant_UROP/images/samplelinegraph-10.png" width="500" alt="heat map">
+<img src="Sea_Grant_UROP/images/samplelinegraph-half.png" width="500" alt="heat map"><img src="Sea_Grant_UROP/images/samplelinegraph-all.png" width="500" alt="heat map">
 <a href="https://github.com/Raindrop182/Past-Projects/blob/main/Sea_Grant_UROP/code/line_graph.py">Line Graph Code</a>
 <img src="Sea_Grant_UROP/images/sampletrendline.png" width="500" alt="heat map">
 <a href="https://github.com/Raindrop182/Past-Projects/blob/main/Sea_Grant_UROP/code/trendline.py">Trendline Code</a>

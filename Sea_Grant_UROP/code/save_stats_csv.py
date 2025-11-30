@@ -3,13 +3,15 @@ import pandas as pd
 import glob
 import re
 import os
-
+import numpy as np
 #%%
-folder_path = r"C:/Users/raine/Data/School/MIT/Freshman Year/UROP/CSV/lyze/fakedata/"
-output_path= r"C:/Users/raine/Data/School/MIT/Freshman Year/UROP/CSV/lyze/"
+folder_path = r"C:/Users/raine/Data/School/MIT/Freshman Year/UROP/CSV/test/"
+output_path= r"C:/Users/raine/Data/School/MIT/Freshman Year/UROP/CSV/"
+output_csv_filename=f"alldata.csv"
 
 class DataType(Enum):
     #the variable names in the CSV file
+    CHLOR = "chlor_a"
     DIAT = "diatoms_hirata"
     DINO = "dinoflagellates_hirata"
     GREEN = "greenalgae_hirata"
@@ -19,10 +21,10 @@ def get_dates(csv_paths: list[str]) -> list[str]:
     """Retrieve dates from file path names
     
     Args:
-        csv_paths: list of strings of paths to csv files
+        csv_paths (List[str]): list of CSV file paths
     
     Returns:
-        list of strings of dates
+        List[str]: List of dates extracted from the file paths (format: 'YYYY-MM-DD').
     """
     dates = []
     for csv_path in csv_paths:
@@ -41,7 +43,6 @@ def read_csv(csv_path: str) -> pd.DataFrame:
         numLinesBeforeHeader=0  
         for line in f:
             if line.startswith('featureId'): 
-                header_row=line
                 break
             else:
                 numLinesBeforeHeader+=1
@@ -54,35 +55,69 @@ def read_csv(csv_path: str) -> pd.DataFrame:
         
     return df
 
-def avgValue(data: list) -> int:
-    """returns avg value of a list
+def convert_percentages_to_concentrations(df: pd.DataFrame):
     """
-    if len(data)==0:
-        avg_value=0
-    else:
-        avg_value=sum(data)/len(data)
-    return avg_value
+    Convert phytoplankton percentage columns in the DataFrame
+    to absolute chlorophyll concentrations using total chlorophyll,
+    and replace negative values with NaN.
 
-def extract_data(df: pd.DataFrame, data: list[dict], date):
+    Args:
+        df (pd.DataFrame): DataFrame containing columns for total chlorophyll
+                           and plankton percentages (DataType enum).
+
+    Returns:
+        pd.DataFrame: The same DataFrame with plankton concentrations updated.
     """
+    for data_type in DataType:
+        if data_type!=DataType.CHLOR:
+            df[data_type.value]=df[data_type.value]*df[DataType.CHLOR.value]
+            df.loc[df[data_type.value] < 0, data_type.value] = np.nan
+    return df
+
+def extract_data(df: pd.DataFrame, date):
     """
+   Aggregate phytoplankton data by region for a given date.
+
+   For each region (1–4), this function computes summary statistics 
+   (average, maximum, and minimum) for each datatype specified 
+   in the `DataType` enum. The results are returned as a list of dictionaries, 
+   one dictionary per region.
+
+   Args:
+       df (pd.DataFrame): DataFrame containing phytoplankton data. 
+           Must have a 'region' column and columns corresponding to 
+           all members of the `DataType` enum.
+       date (str or datetime): The date associated with the data.
+
+   Returns:
+       list of dict: A list containing one dictionary per region, where each 
+       dictionary includes:
+           - 'date': the date provided
+           - 'region': the region number (as float)
+           - '<data_type>_avg': average concentration of that type
+           - '<data_type>_max': maximum concentration of that type
+           - '<data_type>_min': minimum concentration of that type
+         for all datatypes in `DataType`.
+    """
+    data=[]
     for region_num in range(1,5,1):
         mask=(df['region']==region_num)
-        region_df=df.loc[mask,[dt.value for dt in DataType]] #selects only the data corresponding to the region
+        region_df=df.loc[mask,[dt.value for dt in DataType]] #selects only the data corresponding to the region and datatypes in DataType
         
-        plankton_data={}
-        for plankton_type in DataType:
-            plankton_data[plankton_type.value+"_avg"]=avgValue([i for i in region_df[plankton_type.value] if i>0])
-            plankton_data[plankton_type.value+"_max"]=max([i for i in region_df[plankton_type.value] if i>0])
-            plankton_data[plankton_type.value+"_min"]=min([i for i in region_df[plankton_type.value] if i>0])
+        region_data={}
+        for data_type in DataType:
+            region_data[data_type.value+"_avg"]=region_df[data_type.value].mean()
+            region_data[data_type.value+"_max"]=region_df[data_type.value].max()
+            region_data[data_type.value+"_min"]=region_df[data_type.value].min()
 
         row = {
             'date': date,
-            **plankton_data,
+            **region_data,
             'region': float(region_num)
         }
         data.append(row)
-    
+    return data
+
 def write_csv_file(data, path):
     """Write CSV data to file"""
     if not data:
@@ -91,10 +126,10 @@ def write_csv_file(data, path):
     df = pd.DataFrame(data)
     
     variables=[]
-    for plankton_type in DataType:
-        variables.append(plankton_type.value+"_avg")
-        variables.append(plankton_type.value+"_max")
-        variables.append(plankton_type.value+"_min")
+    for data_type in DataType:
+        variables.append(data_type.value+"_avg")
+        variables.append(data_type.value+"_max")
+        variables.append(data_type.value+"_min")
 
     column_order = ['date'] + variables + ['region']
     df = df[column_order]
@@ -112,17 +147,18 @@ if __name__ == '__main__':
     if csv_paths:  # Check if any CSVs were found
         dates = get_dates(csv_paths)
         
-        dates_sorted, csv_paths_sorted = zip(*sorted(zip(dates, csv_paths))) #sort the csvs by date
+        #sort the csvs by date
+        dates_sorted, csv_paths_sorted = zip(*sorted(zip(dates, csv_paths)))
         dates_sorted = list(dates_sorted)
         csv_paths_sorted = list(csv_paths_sorted)
         
         data=[]
-        for i,csv_path in enumerate(csv_paths):
-            extract_data(read_csv(csv_path),data,dates[i])
+        for i,csv_path in enumerate(csv_paths_sorted):
+            df=read_csv(csv_path) #read in the csv into a pandas dataframe object
+            df=convert_percentages_to_concentrations(df) #convert percentages of chlorophyll to concentration of chlorophyll
+            data.extend(extract_data(df,dates_sorted[i])) #reformat the df as a dict with avg, max, min values for each datatype
         
-        # csv_filename = f"{dates_sorted[0]}-to-{dates_sorted[-1]}.csv"
-        csv_filename=f"alldata.csv"
-        csv_save_path = os.path.join(output_path, csv_filename)
+        csv_save_path = os.path.join(output_path, output_csv_filename)
         write_csv_file(data,csv_save_path)
    
         

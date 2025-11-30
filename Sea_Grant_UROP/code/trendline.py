@@ -6,30 +6,39 @@ from enum import Enum
 import glob
 import os
 #%%
-csv_path = r"C:/Users/raine/Data/School/MIT/Freshman Year/UROP/CSV/lyze/fakedata10years_interesting.csv"
-output_path= r"C:/Users/raine/Data/School/MIT/Freshman Year/UROP/CSV/lyze/"
+csv_path = r"C:/Users/raine/Data/School/MIT/Freshman Year/UROP/CSV/lyze/samples/11-29/mock_plankton_data.csv"
+output_path= r"C:/Users/raine/Data/School/MIT/Freshman Year/UROP/CSV/lyze/samples/11-29/"
+max_y_lim=0.7
 
-class DataType(Enum):
+class PlanktonType(Enum):
     #the variable names in the CSV file
     DIAT = "diatoms_hirata"
     DINO = "dinoflagellates_hirata"
     GREEN = "greenalgae_hirata"
     PRYM = "prymnesiophytes_hirata"
     
-COLORS={"other":(207/255, 255/255, 223/255),DataType.DIAT:(126/255, 33/255, 148/255),DataType.DINO:(255/255, 156/255, 17/255),DataType.GREEN:(0/255, 210/255, 0),DataType.PRYM:(0/255, 95/255, 185/255)}
+COLORS = {
+    PlanktonType.DIAT: (126/255, 33/255, 148/255),
+    PlanktonType.DINO: (255/255, 156/255, 17/255),
+    PlanktonType.GREEN: (0/255, 210/255, 0),
+    PlanktonType.PRYM: (0/255, 95/255, 185/255),
+}
 
-NAMES={DataType.DIAT:"Diatoms",DataType.DINO:"Dinoflagellates",DataType.GREEN:"Green Algae",DataType.PRYM:"Prymnesiophytes"}
-##############
+NAMES={
+    PlanktonType.DIAT:"Diatoms",
+    PlanktonType.DINO:"Dinoflagellates",
+    PlanktonType.GREEN:"Green Algae",
+    PlanktonType.PRYM:"Prymnesiophytes"
+}
+
 def read_csv(csv_path: str) -> pd.DataFrame:
     """Reads csv file as dataframe object
     """
-    
     #search for the row that contains all the variable names
     with open(csv_path, 'r') as f:
         numLinesBeforeHeader=0  
         for line in f:
             if line.startswith('date'): 
-                header_row=line
                 break
             else:
                 numLinesBeforeHeader+=1
@@ -42,93 +51,104 @@ def read_csv(csv_path: str) -> pd.DataFrame:
         
     return df
 
-def extract_data(df: pd.DataFrame,plankton_type):
-    """saves the avg, q1, q2 from each region for a specific plankton_type
-    
-    creates list of lists
-    each sublist corresponds to a region
-    each sublist contains a dictionary saving the avg, q1, and q2
+def extract_data(df: pd.DataFrame,plankton_type: PlanktonType):
+    """Extract and align chlorophyll-related plankton data across all regions
+    for a single plankton type.
+
+    This function takes a DataFrame containing date-stamped plankton 
+    measurements and returns a list of region-specific dictionaries. 
+    Each dictionary contains NumPy arrays of the average, minimum, and 
+    maximum chlorophyll values aligned to a common date index. Missing 
+    values for dates with no observations in a region are filled with NaN.
     """
     data=[]
     
     all_dates = df['date'].unique()
     n_dates = len(all_dates)
-    date_to_idx = {date: i for i, date in enumerate(sorted(all_dates))} #maps each date to an index
+    date_to_idx = {date: i for i, date in enumerate(sorted(all_dates))} #map each date to an index
     
     region=df['region']
     for region_num in range(1,5,1):
         region_dict={}
         
         mask=(region==region_num)
-        region_df = df.loc[mask].copy() #selects only the data from a specific region      
+        region_df = df.loc[mask] #only select data from that region        
        
-        #nan represents dates with no data. initializes all the plankton lists
         full_avg  = np.full(n_dates, np.nan)
-        full_q1  = np.full(n_dates, np.nan)
-        full_q3  = np.full(n_dates, np.nan)
+        full_min  = np.full(n_dates, np.nan)
+        full_max  = np.full(n_dates, np.nan)
         
-        indices = region_df['date'].map(date_to_idx).values
+        indices = region_df['date'].map(date_to_idx).values #map each date from data in the region to an index
                     
-        full_avg[indices]  = region_df[plankton_type.value  + "_avg"].values
-        full_q1[indices]  = region_df[plankton_type.value  + "_min"].values
-        full_q3[indices]  = region_df[plankton_type.value  + "_max"].values
+        full_avg[indices]  = region_df[plankton_type.value  + "_avg"].values 
+        full_min[indices]  = region_df[plankton_type.value  + "_min"].values
+        full_max[indices]  = region_df[plankton_type.value  + "_max"].values
 
         region_dict['avg']=np.array(full_avg)
-        region_dict['q1']=np.array(full_q1)
-        region_dict['q3']=np.array(full_q3)
+        region_dict['min']=np.array(full_min)
+        region_dict['max']=np.array(full_max)
 
         data.append(region_dict)
     return data
 
-def generate_trendline(plankton_type,df,save):
-    """generates trendline for a specific species of plankton across all 4 regions
+def generate_trendline(plankton_type: PlanktonType,df: pd.DataFrame,save: bool):
+    """Generate a multi-region trendline plot for a given plankton type.
+
+    This function creates a 4-panel figure (one subplot per region) showing:
+      - the minimum–maximum chlorophyll concentration range (shaded band),
+      - the average concentration trendline,
+      - gray intervals where no data exists for a region.
     """
-    dates = pd.to_datetime(df['date'].unique())
+    dates = np.sort(pd.to_datetime(df['date'].unique())) #unique ordered dates along the x-axis
 
     fig=plt.figure(figsize=(10,9))
     
-    fig.supylabel("Concentration as Fraction of Chlorophyll-A",x=0.01)
+    fig.supylabel("Chlorophyll-A Concentration",x=0.01)
     fig.suptitle(f" {NAMES[plankton_type]}")
     
     data=extract_data(df,plankton_type)
     for region_num in range(1,5):
         plt.subplot(4, 1, region_num)
-        q1_values=data[region_num-1]['q1']
-        q3_values=data[region_num-1]['q3']
+        
+        min_values=data[region_num-1]['min']
+        max_values=data[region_num-1]['max']
         avg_values=data[region_num-1]['avg']
         
         nan_indices = np.isnan(avg_values)
         valid_indices = ~nan_indices
         
-        print(q1_values[valid_indices]) #only plot dots for valid dates
-        plt.fill_between(dates[valid_indices], q1_values[valid_indices], q3_values[valid_indices], color='lightblue', alpha=0.75, label='Min-Max Range')
+        #plot max min range
+        plt.fill_between(dates[valid_indices], min_values[valid_indices], max_values[valid_indices], color='lightblue', alpha=0.75, label='Min-Max Range')
 
+        #plot trendline
         plt.plot(dates[valid_indices], avg_values[valid_indices], label='Trendline', color='blue', marker='o', markersize=5, markerfacecolor='black')
         
-        #plot gray bars for dates with no data
+        #plot gray bars for no data days
         for d in dates[nan_indices]:
             plt.axvspan(d - pd.Timedelta(days=3), d + pd.Timedelta(days=3),
                         color='gray', alpha=0.3,
                         label='No data' if region_num==1 else "")
         
-        plt.ylim(0, 1)
+        plt.ylim(0, max_y_lim)
         plt.ylabel("mg/m^3", fontsize=12)
         
+        #only plot xtick marks on the bottom subplot
         if region_num != 4:
             plt.tick_params(axis='x', labelbottom=False)
-        plt.title("Region " + str(region_num))
             
-    plt.gca().xaxis.set_major_locator(plt.MaxNLocator(20)) #plot 20 dates along the x axisv  
+        plt.title("Region " + str(region_num))
+    
+    plt.gca().xaxis.set_major_locator(plt.MaxNLocator(20)) #plot year-month for ~20 dates along the x-axis  
     plt.gca().xaxis.set_major_formatter(DateFormatter('%Y-%m'))  
 
     plt.xticks(rotation=45)
     plt.tight_layout(rect=[0, 0.08, 1, 0.96])
     
-    plt.figlegend(["Trendline", "Min-Max Range", "Cloudy/Insufficient Data"], loc='lower center', ncol=3, fontsize=10)
+    plt.figlegend(["Min-Max Range","Trendline","Cloudy/Insufficient Data"], loc='lower center', ncol=3, fontsize=10)
     plt.show()
 
     if save:
-        fig.savefig(output_path+"myplot.png",bbox_inches="tight")
+        fig.savefig(output_path+"sampletrendline.png",bbox_inches="tight")
     
 ##############
 if __name__ == '__main__':    
@@ -137,5 +157,5 @@ if __name__ == '__main__':
     else:
         df=read_csv(csv_path)
                                 
-        plankton_type=DataType.DIAT
+        plankton_type=PlanktonType.DIAT
         generate_trendline(plankton_type,df,save=True)

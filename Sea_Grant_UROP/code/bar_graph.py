@@ -4,23 +4,39 @@ import numpy as np
 from enum import Enum
 import glob
 import os
+from matplotlib.patches import Patch
 #%%
-csv_path = r"C:/Users/raine/Data/School/MIT/Freshman Year/UROP/CSV/lyze/fakedata10years_interesting.csv"
-output_path= r"C:/Users/raine/Data/School/MIT/Freshman Year/UROP/CSV/lyze/"
+csv_path = r"C:/Users/raine/Data/School/MIT/Freshman Year/UROP/CSV/lyze/samples/11-29/mock_plankton_data.csv"
+output_path= r"C:/Users/raine/Data/School/MIT/Freshman Year/UROP/CSV/lyze/samples/11-29/"
 
-class DataType(Enum):
+upper_y_lim=1.3
+
+class PlanktonType(Enum):
     #the variable names in the CSV file
     DIAT = "diatoms_hirata"
     DINO = "dinoflagellates_hirata"
     GREEN = "greenalgae_hirata"
     PRYM = "prymnesiophytes_hirata"
+
+LEGEND_NAMES = {
+    PlanktonType.DIAT: "Diatoms",
+    PlanktonType.DINO: "Dinoflagellates",
+    PlanktonType.GREEN: "Green Algae",
+    PlanktonType.PRYM: "Prymnesiophytes"
+}
     
-COLORS={"other":(207/255, 255/255, 223/255),DataType.DIAT:(126/255, 33/255, 148/255),DataType.DINO:(255/255, 156/255, 17/255),DataType.GREEN:(0/255, 210/255, 0),DataType.PRYM:(0/255, 95/255, 185/255)}
+COLORS = {
+    PlanktonType.DIAT: (126/255, 33/255, 148/255),
+    PlanktonType.DINO: (255/255, 156/255, 17/255),
+    PlanktonType.GREEN: (0/255, 210/255, 0),
+    PlanktonType.PRYM: (0/255, 95/255, 185/255),
+}
 
 ##############
 def read_csv(csv_path: str) -> pd.DataFrame:
     """Reads csv file as dataframe object
     """
+    
     #search for the row that contains all the variable names
     with open(csv_path, 'r') as f:
         numLinesBeforeHeader=0  
@@ -39,67 +55,64 @@ def read_csv(csv_path: str) -> pd.DataFrame:
         
     return df
 
-def extract_data(df: pd.DataFrame) -> dict:
-    """Converts pandas dataframe to a dictionary
-    
-    Returns: dictionary with keys corresponding to each type of plankton
-    each plankton corresponds to 4 lists
-    each list corresponds to the avg values from a region
-    -1 represents dates where there were no data
+def extract_data(df: pd.DataFrame):
+    """
+    Extracts plankton concentration data from a DataFrame and organizes it by region and plankton type.
+
+    Args:
+        df (pd.DataFrame): Input DataFrame containing plankton measurements.
+
+    Returns:
+        dict: A dictionary mapping each `PlanktonType` to a list of 1D numpy arrays, one per region.  
+        Each array has length equal to the number of unique dates and contains the average chlorophyll-a
+        concentrations for that plankton type in that region. Missing dates are represented as `NaN`.
     """
     allData={}
-    allData[DataType.DIAT]=[]
-    allData[DataType.DINO]=[]
-    allData[DataType.GREEN]=[]
-    allData[DataType.PRYM]=[]
+    allData[PlanktonType.DIAT]=[]
+    allData[PlanktonType.DINO]=[]
+    allData[PlanktonType.GREEN]=[]
+    allData[PlanktonType.PRYM]=[]
     
     all_dates = df['date'].unique()
     n_dates = len(all_dates)
     date_to_idx = {date: i for i, date in enumerate(sorted(all_dates))} #maps each date to an index
     
-    region=df['region']
     for region_num in range(1,5,1):
-        mask=(region==region_num)
-        region_df = df.loc[mask].copy() #selects only the data from a specific region    
+        mask=(df['region']==region_num)
+        region_df = df.loc[mask].copy()        
        
-        #-1 represents dates with no data. initializes all the plankton lists
-        full_diat  = np.full(n_dates, -1.0) 
-        full_dino  = np.full(n_dates, -1.0)
-        full_green = np.full(n_dates, -1.0)
-        full_prym  = np.full(n_dates, -1.0)
+        full_diat  = np.full(n_dates, np.nan)
+        full_dino  = np.full(n_dates, np.nan)
+        full_green = np.full(n_dates, np.nan)
+        full_prym  = np.full(n_dates, np.nan)
         
-        #some regions may not have all the dates. maps dates in the regions to their proper index.
         indices = region_df['date'].map(date_to_idx).values
+                    
+        full_diat[indices]  = region_df[PlanktonType.DIAT.value  + "_avg"].values 
+        full_dino[indices]  = region_df[PlanktonType.DINO.value  + "_avg"].values
+        full_green[indices] = region_df[PlanktonType.GREEN.value + "_avg"].values
+        full_prym[indices] = region_df[PlanktonType.PRYM.value + "_avg"].values
         
-        #replaces -1 (null data points) with actual data points
-        full_diat[indices]  = region_df[DataType.DIAT.value  + "_avg"].values 
-        full_dino[indices]  = region_df[DataType.DINO.value  + "_avg"].values
-        full_green[indices] = region_df[DataType.GREEN.value + "_avg"].values
-        full_prym[indices] = region_df[DataType.PRYM.value + "_avg"].values
-        
-        allData[DataType.DIAT].append(full_diat) 
-        allData[DataType.DINO].append(full_dino)
-        allData[DataType.GREEN].append(full_green)
-        allData[DataType.PRYM].append(full_prym)
+        allData[PlanktonType.DIAT].append(full_diat) 
+        allData[PlanktonType.DINO].append(full_dino)
+        allData[PlanktonType.GREEN].append(full_green)
+        allData[PlanktonType.PRYM].append(full_prym)
     return allData
 
 def generate_bar_graph(data,dates,save):
     """generates bar graph displaying plankton concentration in each region
-    
-    Args:
-        data: dictionary with plankton keys corresponding to 4 lists. each list corresponds to a specific region
     """
     fig=plt.figure(figsize=(50,12))
     fig.subplots_adjust(hspace=0.5)
-    fig.suptitle("\n Phytoplankton Composition of Total Chlorophyll-a 2013 to 2020", fontsize=14, fontweight='bold')
+    fig.suptitle("\n Phytoplankton Concentration 2015 to 2025", fontsize=14, fontweight='bold')
     
-    fig.supylabel("Concentration as Fraction of Chlorophyll-A",x=0.1)
+    fig.supylabel("Chlorophyll-A Concentration (mg per m^3)",x=0.1)
     #graphs the data for each region
     for region in range(1,5,1):
         ax=fig.add_subplot(4,1,region)
-        ax.set_ylim(0,1)
+        ax.set_ylim(0,upper_y_lim)
         ax.set_title("Region "+f"{region}")
-        bottom = np.zeros(len(df['date'].unique()))
+        bottom = np.zeros(len(dates))
         x_axis=np.arange(1,len(bottom)+1)
         
         #create x-axis with dates
@@ -110,29 +123,26 @@ def generate_bar_graph(data,dates,save):
             ax.xaxis.set_visible(False)
         
         #graph the data for each plankton type
-        for plankton_type in DataType:
+        for plankton_type in PlanktonType:
             height=np.array(data[plankton_type][region-1])
             
-            valid = height >= 0                            
-            missing = height < 0
+            valid = ~np.isnan(height)                             
+            missing = np.isnan(height)
             
-            ax.bar(x_axis[valid],height[valid],bottom=bottom[valid], color=COLORS[plankton_type], label=plankton_type.value, linewidth=0.3)
+            ax.bar(x_axis[valid],height[valid],bottom=bottom[valid], color=COLORS[plankton_type], label=LEGEND_NAMES[plankton_type], linewidth=0.3)
             for i in np.where(valid)[0]:
                 if height[i] > 0:
                     r, g, b = COLORS[plankton_type][:3]
                     ax.text(x_axis[i], bottom[i] + height[i] / 2, f"{height[i]:.2f}", ha='center', va='center', fontsize=8, color="white" if (0.299*r + 0.587*g + 0.114*b) < 0.4 else "black")
             bottom[valid]+=height[valid]
         
-
-        
-        #Fills the remainder to 1
-        ax.bar(x_axis,[min(1,1-i) for i in bottom],hatch = '/',bottom=bottom, color=COLORS["other"], label="other", linewidth=0.3)
-        
-        ax.bar(x_axis[missing], 1.0, color='gray', alpha=0.7,label="No data")
+        ax.bar(x_axis[missing], upper_y_lim, facecolor='gray',alpha=0.7)
 
 
-    ax.legend(bbox_to_anchor=(1.1, 6),loc="upper right")
-
+    # After plotting all bars
+    handles, labels = ax.get_legend_handles_labels()  # get existing handles
+    handles.append(Patch(facecolor='gray', alpha=0.7, label='No data')) #add "No data" gray to legend
+    ax.legend(handles=handles, bbox_to_anchor=(1.1, 6), loc="upper right") # Create legend
     if save:
         fig.savefig(output_path+"myplot.png",bbox_inches="tight")
     
@@ -149,4 +159,3 @@ if __name__ == '__main__':
         
         generate_bar_graph(data,dates,save=True)
     
-#%%

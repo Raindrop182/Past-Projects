@@ -9,7 +9,7 @@ As a researcher in MIT Sea Grant, I am studying plankton concentrations off the 
 <a href="https://github.com/Raindrop182/Past-Projects/blob/main/Sea_Grant_UROP/code/heatmap.py">Heat Map Code</a>
 <img src="Sea_Grant_UROP/images/samplelinegraph-half.png" width="500" alt="heat map"><img src="Sea_Grant_UROP/images/samplelinegraph-all.png" width="500" alt="heat map">
 <a href="https://github.com/Raindrop182/Past-Projects/blob/main/Sea_Grant_UROP/code/line_graph.py">Line Graph Code</a>
-<img src="Sea_Grant_UROP/images/sampletrendline.png" width="500" alt="heat map">
+<img src="Sea_Grant_UROP/images/sample_trendline.png" width="500" alt="heat map">
 <a href="https://github.com/Raindrop182/Past-Projects/blob/main/Sea_Grant_UROP/code/trendline.py">Trendline Code</a>
 
 I've also included two smaller automation scripts I wrote, one that <a href="https://github.com/Raindrop182/Past-Projects/blob/main/Sea_Grant_UROP/code/export_photoshop_layers.jsx">exports specific image layers from Photoshop</a> and one that <a href="https://github.com/Raindrop182/Past-Projects/blob/main/Sea_Grant_UROP/code/convert_tiff_to_jpg.py">converts tiffs to jpgs</a>.

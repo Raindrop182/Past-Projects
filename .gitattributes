@@ -1,0 +1,5 @@
+# Only enforce LF line endings for these scripts
+MinimalLinux/Busybox-build.sh text eol=lf
+MinimalLinux/Kernel-build.sh  text eol=lf
+MinimalLinux/User-build.sh    text eol=lf
+MinimalLinux/Image-build.sh   text eol=lf

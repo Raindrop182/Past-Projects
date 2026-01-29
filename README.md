@@ -8,6 +8,14 @@ Utilizing Pytorch, I trained CNN models on public datasets and my own custom dat
 <img src="https://github.com/Raindrop182/mail_detection/blob/main/sample_images/sample_output.png" alt="sample mail truck">
 
 ---
+## Minimal Linux Environment From Scratch
+I built a minimal Linux environment from scratch using four shell scripts, including:
+* Kernel compilation with a custom configuration and embedded initramfs.
+* BusyBox root filesystem creation and installation of core userspace services (udev, dhcpcd, chrony).
+* Initramfs packaging to produce a bootable image.
+* UEFI boot automation in QEMU
+
+---
 ## MIT Sea Grant UROP
 <img src="Sea_Grant_UROP/images/sample_visualization1.png" width="500" alt="sample visualization 1">
 As a researcher in MIT Sea Grant, I study plankton concentrations off the coast of Massachusetts by analyzing satellite data. I've analyzed the concentrations of different species of plankton in 4 key regions around Massachusetts over time. Although we are still in the process of acquiring and graphing real data, I've included my code and sample visualizations based on fake, test data below. 

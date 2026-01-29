@@ -5,9 +5,9 @@ import re
 import os
 import numpy as np
 #%%
-folder_path = r"C:/Users/raine/Data/School/MIT/Freshman Year/UROP/CSV/test/"
-output_path= r"C:/Users/raine/Data/School/MIT/Freshman Year/UROP/CSV/"
-output_csv_filename=f"alldata.csv"
+folder_path = r"C:/Users/raine/Data/School/MIT/Freshman Year/UROP/CSV/real_data/"
+output_path= r"C:/Users/raine/Data/School/MIT/Freshman Year/UROP/CSV/lyze/samples/12-28/"
+output_csv_filename=f"alldata50bins.csv"
 
 class DataType(Enum):
     #the variable names in the CSV file
@@ -71,8 +71,37 @@ def convert_percentages_to_concentrations(df: pd.DataFrame):
     for data_type in DataType:
         if data_type!=DataType.CHLOR:
             df[data_type.value]=df[data_type.value]*df[DataType.CHLOR.value]
-            df.loc[df[data_type.value] < 0, data_type.value] = np.nan
+        df.loc[df[data_type.value] < 0, data_type.value] = np.nan
     return df
+
+def calc_subregions_minmax(region_df: pd.DataFrame):
+    """
+    Returns the min and max of the average of subregions
+    
+    The function divides the input DataFrame into a n x n grid based on 
+    latitude and longitude. For each grid cell, it computes the mean of 
+    each data type (from the `DataType` enum). Then it returns the overall 
+    minimum and maximum of these mean values for each data type.
+    """
+    num_bins=50
+
+    region_df = region_df.copy()
+    region_df['lat_bin'] = pd.cut(region_df['latitude'], bins=num_bins, labels=False) #split the latitude into num_bins sections
+    region_df['lon_bin'] = pd.cut(region_df['longitude'], bins=num_bins, labels=False) #split the longitude into num_bins sections
+    
+    grouped = region_df.groupby(['lat_bin', 'lon_bin'])
+    
+    mean_df = grouped[[dt.value for dt in DataType]].mean() #calculate the mean of each subregion
+
+    minmaxdict={}
+    for data_type in DataType:
+        minmaxdict[data_type] = [
+            mean_df[data_type.value].min(skipna=True),
+            mean_df[data_type.value].max(skipna=True)
+        ]       
+        
+        assert minmaxdict[data_type][1]>=minmaxdict[data_type][0], "Error. Max is smaller than min"
+    return minmaxdict
 
 def extract_data(df: pd.DataFrame, date):
     """
@@ -95,20 +124,22 @@ def extract_data(df: pd.DataFrame, date):
            - 'date': the date provided
            - 'region': the region number (as float)
            - '<data_type>_avg': average concentration of that type
-           - '<data_type>_max': maximum concentration of that type
-           - '<data_type>_min': minimum concentration of that type
+           - '<data_type>_max': maximum subregion avg concentration of that type
+           - '<data_type>_min': minimum subregion avg concentration of that type
          for all datatypes in `DataType`.
     """
     data=[]
     for region_num in range(1,5,1):
         mask=(df['region']==region_num)
-        region_df=df.loc[mask,[dt.value for dt in DataType]] #selects only the data corresponding to the region and datatypes in DataType
+        region_df=df.loc[mask] #selects only the data corresponding to the region and datatypes in DataType
+        
+        minmaxdict=calc_subregions_minmax(region_df)
         
         region_data={}
         for data_type in DataType:
             region_data[data_type.value+"_avg"]=region_df[data_type.value].mean()
-            region_data[data_type.value+"_max"]=region_df[data_type.value].max()
-            region_data[data_type.value+"_min"]=region_df[data_type.value].min()
+            region_data[data_type.value+"_max"]=minmaxdict[data_type][1]
+            region_data[data_type.value+"_min"]=minmaxdict[data_type][0]
 
         row = {
             'date': date,
@@ -116,6 +147,7 @@ def extract_data(df: pd.DataFrame, date):
             'region': float(region_num)
         }
         data.append(row)
+    # print(data)
     return data
 
 def write_csv_file(data, path):
@@ -135,7 +167,7 @@ def write_csv_file(data, path):
     df = df[column_order]
 
     header_row = "date " + " ".join([f"{var}:float" for var in variables])+ " region:float"
-
+    print(df)
     with open(path, 'w') as f:
         f.write(f"{header_row}\n")
         df.to_csv(f, sep=' ', index=False, header=False, float_format='%.8f')

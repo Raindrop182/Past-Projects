@@ -18,20 +18,17 @@ I built a minimal Linux environment from scratch using four shell scripts, inclu
 ---
 ## MIT Sea Grant UROP
 <img src="Sea_Grant_UROP/images/sample_visualization1.png" width="500" alt="sample visualization 1">
-As a researcher in MIT Sea Grant, I study plankton concentrations off the coast of Massachusetts by analyzing satellite data. I've analyzed the concentrations of different species of plankton in 4 key regions around Massachusetts over time. Although we are still in the process of acquiring and graphing real data, I've included my code and sample visualizations based on fake, test data below. 
+As a researcher in MIT Sea Grant, I visualize and study longterm trends of phytoplankton concentration around the coast of Massachusetts​. By analyzing satellite data, I've created 3 different types of visualizations of phytoplankton species concentrations in 4 key regions around Massachusetts over time. Sample graphs and associated scripts are listed below.
 <br>
 <br>
 <br>
-<img src="Sea_Grant_UROP/images/samplebargraph.png" width="700" alt="bar graph">
+<img src="Sea_Grant_UROP/images/sample_bargraph.png" width="700" alt="bar graph">
 <a href="https://github.com/Raindrop182/Past-Projects/blob/main/Sea_Grant_UROP/code/bar_graph.py">
 Bar Graph Code
 </a>
   <br>
-<img src="Sea_Grant_UROP/images/sampleheatmap.png" width="500" alt="heat map">
+<img src="Sea_Grant_UROP/images/sample_heatmap.png" width="500" alt="heat map">
 <a href="https://github.com/Raindrop182/Past-Projects/blob/main/Sea_Grant_UROP/code/heatmap.py">Heat Map Code</a>
-<br>
-<img src="Sea_Grant_UROP/images/samplelinegraph-half.png" width="500" alt="line graph"><img src="Sea_Grant_UROP/images/samplelinegraph-all.png" width="500" alt="line graph">
-<a href="https://github.com/Raindrop182/Past-Projects/blob/main/Sea_Grant_UROP/code/line_graph.py">Line Graph Code</a>
 <br>
 <img src="Sea_Grant_UROP/images/sample_trendline.png" width="500" alt="trendline">
 <a href="https://github.com/Raindrop182/Past-Projects/blob/main/Sea_Grant_UROP/code/trendline.py">Trendline Code</a>

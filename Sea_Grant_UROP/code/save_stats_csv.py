@@ -4,10 +4,12 @@ import glob
 import re
 import os
 import numpy as np
+from pathlib import Path
 #%%
-folder_path = r"C:/Users/raine/Data/School/MIT/Freshman Year/UROP/CSV/real_data/"
-output_path= r"C:/Users/raine/Data/School/MIT/Freshman Year/UROP/CSV/lyze/samples/12-28/"
-output_csv_filename=f"alldata50bins.csv"
+folder_path = r"F:/UROP/download_test/"
+# folder_path= r"C:/Users/raine/Data/School/MIT/Freshman Year/UROP/CSV/lyze/samples/"
+output_path= r"C:/Users/raine/Data/School/MIT/Freshman Year/UROP/CSV/lyze/samples/2-17/"
+output_csv_filename=f"debugging.csv"
 
 class DataType(Enum):
     #the variable names in the CSV file
@@ -52,6 +54,8 @@ def read_csv(csv_path: str) -> pd.DataFrame:
     #read in the csv file, starting with the row that contains all the variable names
     df = pd.read_csv(csv_path,sep=' ',skiprows=numLinesBeforeHeader,header=0,comment='#',on_bad_lines='skip')
     df.columns=[c.split(':')[0] for c in df.columns]
+    # print(df.columns)
+    print(f"Read {csv_path}")
         
     return df
 
@@ -70,34 +74,36 @@ def convert_percentages_to_concentrations(df: pd.DataFrame):
     """
     for data_type in DataType:
         if data_type!=DataType.CHLOR:
+            raw_max = df[data_type.value].max()
+            print(f"DEBUG: Raw max fraction for {data_type.name}: {raw_max}")
             df[data_type.value]=df[data_type.value]*df[DataType.CHLOR.value]
         df.loc[df[data_type.value] < 0, data_type.value] = np.nan
     return df
 
 def calc_subregions_minmax(region_df: pd.DataFrame):
     """
-    Returns the min and max of the average of subregions
-    
-    The function divides the input DataFrame into a n x n grid based on 
-    latitude and longitude. For each grid cell, it computes the mean of 
-    each data type (from the `DataType` enum). Then it returns the overall 
-    minimum and maximum of these mean values for each data type.
+    Compute the minimum and maximum values for each DataType column
+    in a regional subset DataFrame.
+
+    Parameters
+    ----------
+    region_df : pandas.DataFrame
+        DataFrame containing numeric columns corresponding to each
+        member of the DataType enum. Column names must match
+        `DataType.value`.
+
+    Returns
+    -------
+    dict[DataType, list[float, float]]
+        Dictionary mapping each DataType enum member to a
+        [min_value, max_value] list. NaN values are ignored
+        when computing extrema.
     """
-    num_bins=50
-
-    region_df = region_df.copy()
-    region_df['lat_bin'] = pd.cut(region_df['latitude'], bins=num_bins, labels=False) #split the latitude into num_bins sections
-    region_df['lon_bin'] = pd.cut(region_df['longitude'], bins=num_bins, labels=False) #split the longitude into num_bins sections
-    
-    grouped = region_df.groupby(['lat_bin', 'lon_bin'])
-    
-    mean_df = grouped[[dt.value for dt in DataType]].mean() #calculate the mean of each subregion
-
     minmaxdict={}
     for data_type in DataType:
         minmaxdict[data_type] = [
-            mean_df[data_type.value].min(skipna=True),
-            mean_df[data_type.value].max(skipna=True)
+            region_df[data_type.value].min(skipna=True),
+            region_df[data_type.value].max(skipna=True)
         ]       
         
         assert minmaxdict[data_type][1]>=minmaxdict[data_type][0], "Error. Max is smaller than min"
@@ -133,6 +139,25 @@ def extract_data(df: pd.DataFrame, date):
         mask=(df['region']==region_num)
         region_df=df.loc[mask] #selects only the data corresponding to the region and datatypes in DataType
         
+        if region_df.empty:
+            continue
+
+        fraction_null = region_df['chlor_a'].isna().mean()
+        if fraction_null>=.9: #if greater than 90% of the region are null values (usually due to heavy cloud cover), save this region's data as nan
+            region_data={}
+            for data_type in DataType:
+                region_data[data_type.value+"_avg"]=np.nan
+                region_data[data_type.value+"_max"]=np.nan
+                region_data[data_type.value+"_min"]=np.nan
+    
+            row = {
+                'date': date,
+                **region_data,
+                'region': float(region_num)
+            }
+            data.append(row)
+            continue
+        
         minmaxdict=calc_subregions_minmax(region_df)
         
         region_data={}
@@ -154,6 +179,9 @@ def write_csv_file(data, path):
     """Write CSV data to file"""
     if not data:
         return
+    
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)  # ← creates dirs if needed
 
     df = pd.DataFrame(data)
     
@@ -167,7 +195,7 @@ def write_csv_file(data, path):
     df = df[column_order]
 
     header_row = "date " + " ".join([f"{var}:float" for var in variables])+ " region:float"
-    print(df)
+    # print(df)
     with open(path, 'w') as f:
         f.write(f"{header_row}\n")
         df.to_csv(f, sep=' ', index=False, header=False, float_format='%.8f')
@@ -186,6 +214,7 @@ if __name__ == '__main__':
         
         data=[]
         for i,csv_path in enumerate(csv_paths_sorted):
+            csv_path = Path(csv_path)  # normalize path
             df=read_csv(csv_path) #read in the csv into a pandas dataframe object
             df=convert_percentages_to_concentrations(df) #convert percentages of chlorophyll to concentration of chlorophyll
             data.extend(extract_data(df,dates_sorted[i])) #reformat the df as a dict with avg, max, min values for each datatype
